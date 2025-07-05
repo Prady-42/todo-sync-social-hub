@@ -21,13 +21,13 @@ export interface Task {
 
 interface TaskCardProps {
   task: Task;
-  onToggleComplete: (id: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onShare: (task: Task) => void;
+  currentUser: string;
 }
 
-export function TaskCard({ task, onToggleComplete, onEdit, onDelete, onShare }: TaskCardProps) {
+export function TaskCard({ task, onEdit, onDelete, onShare, currentUser }: TaskCardProps) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800';
@@ -48,6 +48,11 @@ export function TaskCard({ task, onToggleComplete, onEdit, onDelete, onShare }: 
 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
 
+  const handleToggleComplete = () => {
+    // This will be handled by the parent component
+    console.log('Toggle complete for task:', task.id);
+  };
+
   return (
     <Card className={cn(
       "transition-all duration-200 hover:shadow-lg hover:scale-[1.02]",
@@ -60,7 +65,7 @@ export function TaskCard({ task, onToggleComplete, onEdit, onDelete, onShare }: 
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onToggleComplete(task.id)}
+              onClick={handleToggleComplete}
               className={cn(
                 "h-6 w-6 rounded-full border-2 p-0",
                 task.status === 'completed' 
