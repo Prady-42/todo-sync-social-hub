@@ -18,7 +18,7 @@ const Index = () => {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  return <Dashboard />;
+  return <Dashboard onLogout={handleLogout} />;
 };
 
 export default Index;
