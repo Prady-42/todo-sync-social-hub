@@ -1,86 +1,113 @@
+
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Navbar } from '@/components/Navbar';
-import { TaskCard, Task } from '@/components/TaskCard';
-import { TaskForm } from '@/components/TaskForm';
-import { TaskFilters } from '@/components/TaskFilters';
-import { ShareTaskModal } from '@/components/ShareTaskModal';
+import { Navbar } from './Navbar';
+import { TaskFilters } from './TaskFilters';
+import { TaskCard, Task } from './TaskCard';
+import { TaskForm } from './TaskForm';
+import { ShareTaskModal } from './ShareTaskModal';
 import { useToast } from '@/hooks/use-toast';
 
-interface DashboardProps {
-  onLogout?: () => void;
-}
+// Mock data
+const mockTasks: Task[] = [
+  {
+    id: '1',
+    title: 'Design new landing page',
+    description: 'Create wireframes and mockups for the new product landing page',
+    status: 'in-progress',
+    priority: 'high',
+    dueDate: '2025-07-08',
+    createdBy: 'user1',
+    createdAt: '2025-07-01',
+    sharedWith: ['john@example.com'],
+  },
+  {
+    id: '2',
+    title: 'Set up CI/CD pipeline',
+    description: 'Configure automated testing and deployment',
+    status: 'todo',
+    priority: 'medium',
+    dueDate: '2025-07-10',
+    createdBy: 'user1',
+    createdAt: '2025-07-02',
+  },
+  {
+    id: '3',
+    title: 'Review pull requests',
+    description: 'Review and merge pending pull requests',
+    status: 'completed',
+    priority: 'low',
+    dueDate: '2025-07-05',
+    createdBy: 'user1',
+    createdAt: '2025-07-03',
+  },
+  {
+    id: '4',
+    title: 'Client meeting preparation',
+    description: 'Prepare presentation and demo for client meeting',
+    status: 'todo',
+    priority: 'high',
+    dueDate: '2025-07-06',
+    createdBy: 'user1',
+    createdAt: '2025-07-04',
+    sharedWith: ['sarah@example.com', 'mike@example.com'],
+  },
+];
 
-export function Dashboard({ onLogout }: DashboardProps) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
+const mockUser = {
+  name: 'John Doe',
+  email: 'john@example.com',
+  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face',
+};
+
+export function Dashboard() {
+  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>(mockTasks);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('created');
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
-  const [shareModalTask, setShareModalTask] = useState<Task | undefined>();
+  const [sharingTask, setSharingTask] = useState<Task | undefined>();
   const { toast } = useToast();
 
-  // Mock user data
-  const user = {
-    name: 'John Doe',
-    email: 'john@example.com',
-    avatar: '/placeholder.svg'
-  };
-
+  // Filter and sort tasks
   useEffect(() => {
-    const mockTasks: Task[] = [
-      {
-        id: '1',
-        title: 'Complete project proposal',
-        description: 'Write and submit the Q1 project proposal',
-        status: 'in-progress',
-        priority: 'high',
-        dueDate: '2024-01-15',
-        createdAt: '2024-01-01',
-        createdBy: 'john@example.com',
-        sharedWith: ['alice@example.com']
-      },
-      {
-        id: '2',
-        title: 'Review team feedback',
-        description: 'Go through all team feedback from last sprint',
-        status: 'todo',
-        priority: 'medium',
-        dueDate: '2024-01-12',
-        createdAt: '2024-01-02',
-        createdBy: 'john@example.com',
-        sharedWith: []
-      },
-      {
-        id: '3',
-        title: 'Update documentation',
-        description: 'Update API documentation with latest changes',
-        status: 'completed',
-        priority: 'low',
-        dueDate: '2024-01-10',
-        createdAt: '2024-01-03',
-        createdBy: 'john@example.com',
-        sharedWith: ['bob@example.com']
-      }
-    ];
-    setTasks(mockTasks);
-    setFilteredTasks(mockTasks);
-  }, []);
-
-  const handleCreateTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'createdBy'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      createdBy: user.email
-    };
-    
-    setTasks(prev => [newTask, ...prev]);
-    setIsTaskFormOpen(false);
-    toast({
-      title: "Task created",
-      description: "Your task has been created successfully.",
+    let filtered = tasks.filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+      const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+      
+      return matchesSearch && matchesStatus && matchesPriority;
     });
+
+    // Sort tasks
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'due':
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        case 'priority':
+          const priorityOrder = { high: 3, medium: 2, low: 1 };
+          return priorityOrder[b.priority] - priorityOrder[a.priority];
+        case 'status':
+          const statusOrder = { todo: 1, 'in-progress': 2, completed: 3 };
+          return statusOrder[a.status] - statusOrder[b.status];
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+
+    setFilteredTasks(filtered);
+  }, [tasks, searchTerm, statusFilter, priorityFilter, sortBy]);
+
+  const handleCreateTask = () => {
+    setEditingTask(undefined);
+    setIsTaskFormOpen(true);
   };
 
   const handleEditTask = (task: Task) => {
@@ -88,107 +115,170 @@ export function Dashboard({ onLogout }: DashboardProps) {
     setIsTaskFormOpen(true);
   };
 
-  const handleUpdateTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'createdBy'>) => {
-    if (!editingTask) return;
-    
-    const updatedTask: Task = {
-      ...editingTask,
-      ...taskData
-    };
-    
-    setTasks(prev => prev.map(t => t.id === editingTask.id ? updatedTask : t));
+  const handleSaveTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'createdBy'>) => {
+    if (editingTask) {
+      // Update existing task
+      setTasks(prev => prev.map(task => 
+        task.id === editingTask.id 
+          ? { ...task, ...taskData }
+          : task
+      ));
+      toast({
+        title: "Task updated",
+        description: "Your task has been successfully updated.",
+      });
+    } else {
+      // Create new task
+      const newTask: Task = {
+        ...taskData,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        createdBy: 'user1',
+      };
+      setTasks(prev => [newTask, ...prev]);
+      toast({
+        title: "Task created",
+        description: "Your new task has been successfully created.",
+      });
+    }
     setIsTaskFormOpen(false);
-    setEditingTask(undefined);
-    toast({
-      title: "Task updated",
-      description: "Your task has been updated successfully.",
-    });
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+  const handleToggleComplete = (id: string) => {
+    setTasks(prev => prev.map(task => 
+      task.id === id 
+        ? { ...task, status: task.status === 'completed' ? 'todo' : 'completed' }
+        : task
+    ));
+    
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      toast({
+        title: task.status === 'completed' ? "Task reopened" : "Task completed",
+        description: task.status === 'completed' ? "Task has been marked as todo." : "Great job completing this task!",
+      });
+    }
+  };
+
+  const handleDeleteTask = (id: string) => {
+    setTasks(prev => prev.filter(task => task.id !== id));
     toast({
       title: "Task deleted",
-      description: "Your task has been deleted successfully.",
+      description: "Your task has been successfully deleted.",
+      variant: "destructive",
     });
   };
 
   const handleShareTask = (task: Task) => {
-    setShareModalTask(task);
+    setSharingTask(task);
+    setIsShareModalOpen(true);
   };
 
-  const handleTaskShare = (taskId: string, emails: string[]) => {
+  const handleSaveSharedTask = (taskId: string, emails: string[]) => {
     setTasks(prev => prev.map(task => 
       task.id === taskId 
-        ? { ...task, sharedWith: [...(task.sharedWith || []), ...emails] }
+        ? { ...task, sharedWith: emails }
         : task
     ));
-    setShareModalTask(undefined);
     toast({
       title: "Task shared",
-      description: `Task shared with ${emails.join(', ')}`,
+      description: `Task has been shared with ${emails.length} user${emails.length > 1 ? 's' : ''}.`,
     });
   };
 
-  const handleFiltersChange = (filtered: Task[]) => {
-    setFilteredTasks(filtered);
+  const getTaskStats = () => {
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const inProgress = tasks.filter(t => t.status === 'in-progress').length;
+    const overdue = tasks.filter(t => 
+      t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed'
+    ).length;
+    
+    return { total, completed, inProgress, overdue };
   };
 
+  const stats = getTaskStats();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <Navbar user={user} onLogout={onLogout} />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      <Navbar user={mockUser} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Tasks</h1>
-            <p className="text-gray-600 mt-1">Manage your tasks and collaborate with others</p>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+            <div className="text-sm text-gray-600">Total Tasks</div>
           </div>
-          <Button onClick={() => setIsTaskFormOpen(true)} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            New Task
-          </Button>
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+            <div className="text-sm text-gray-600">Completed</div>
+          </div>
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
+            <div className="text-sm text-gray-600">In Progress</div>
+          </div>
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
+            <div className="text-sm text-gray-600">Overdue</div>
+          </div>
         </div>
 
-        <TaskFilters tasks={tasks} onFiltersChange={handleFiltersChange} />
+        {/* Filters */}
+        <TaskFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          priorityFilter={priorityFilter}
+          onPriorityFilterChange={setPriorityFilter}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          onCreateTask={handleCreateTask}
+        />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-          {filteredTasks.map(task => (
+        {/* Task Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
+              onToggleComplete={handleToggleComplete}
               onEdit={handleEditTask}
               onDelete={handleDeleteTask}
               onShare={handleShareTask}
-              currentUser={user.email}
             />
           ))}
         </div>
 
         {filteredTasks.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No tasks found</p>
-            <p className="text-gray-400">Create your first task to get started</p>
+            <div className="text-gray-500 text-lg">No tasks found</div>
+            <div className="text-gray-400 text-sm mt-1">
+              {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all' 
+                ? 'Try adjusting your filters' 
+                : 'Create your first task to get started'}
+            </div>
           </div>
         )}
       </div>
 
+      {/* Modals */}
       <TaskForm
         task={editingTask}
-        onSave={editingTask ? handleUpdateTask : handleCreateTask}
-        onCancel={() => {
-          setIsTaskFormOpen(false);
-          setEditingTask(undefined);
-        }}
+        onSave={handleSaveTask}
+        onCancel={() => setIsTaskFormOpen(false)}
         isOpen={isTaskFormOpen}
       />
 
-      <ShareTaskModal
-        task={shareModalTask}
-        onShare={handleTaskShare}
-        onClose={() => setShareModalTask(undefined)}
-        isOpen={!!shareModalTask}
-      />
+      {sharingTask && (
+        <ShareTaskModal
+          task={sharingTask}
+          onShare={handleSaveSharedTask}
+          onClose={() => setIsShareModalOpen(false)}
+          isOpen={isShareModalOpen}
+        />
+      )}
     </div>
   );
 }
